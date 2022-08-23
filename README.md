@@ -1,19 +1,4 @@
-
-Run command when user is not idle:
-
-```go
-package main
-
-import (
-  "github.com/JelmerDeHen/xidle"
-)
-
-func main() {
-	runner := xidle.NewCmdJob("sleep", "1337")
-	idlemon := xidle.NewIdlemon(runner)
-	idlemon.Run()
-}
-```
+# Usage
 
 Example with callbacks and durations:
 
@@ -45,3 +30,27 @@ func main() {
 	idlemon.Run()
 }
 ```
+
+# Run application
+
+Run application when user is present and kill app when afk.
+
+```go
+package main
+
+import (
+  "github.com/JelmerDeHen/xidle"
+)
+
+func main() {
+	runner := xidle.NewCmdJob("sleep", "1337")
+	idlemon := xidle.NewIdlemon(runner)
+	idlemon.Run()
+}
+```
+
+Default behavior:
+- When application is running for over 1 hour, kill and respawn application (rotate outfile)
+- When idle during last minute spawn the application
+- When idle over 10 minutes kill the application
+
