@@ -36,10 +36,6 @@ func (c *CmdJob) Spawn() {
 		return
 	}
 
-	//if c.Dbg {
-	log.Printf("Spawn(): %s %v\n", c.name, c.arg)
-	//}
-
 	// Kill before exec
 	if c.Running() {
 		c.Kill()
@@ -54,6 +50,10 @@ func (c *CmdJob) Spawn() {
 			args[i] = c.OutfileGenerator()
 		}
 	}
+
+	//if c.Dbg {
+	log.Printf("Spawn(): %s %v\n", c.name, args)
+	//}
 
 	c.cmd = exec.Command(c.name, args...)
 
@@ -71,8 +71,6 @@ func (c *CmdJob) Spawn() {
 	}
 
 	c.start = time.Now()
-
-  fmt.Println(c.stdcombined.String())
 }
 
 func (c *CmdJob) Poll() {
