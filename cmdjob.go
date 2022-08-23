@@ -46,7 +46,6 @@ func (c *CmdJob) Spawn() {
 	}
 
 	for i, v := range c.arg {
-		fmt.Println(i, v)
 		if v == "${OUTFILE}" {
 			c.arg[i] = c.OutfileGenerator()
 		}
