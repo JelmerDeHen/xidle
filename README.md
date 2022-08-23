@@ -51,6 +51,6 @@ func main() {
 
 Default behavior:
 - When application is running for over 1 hour, kill and respawn application (rotate outfile)
-- When idle during last minute spawn the application
+- When not idle during last minute spawn the application
 - When idle over 10 minutes kill the application
 
