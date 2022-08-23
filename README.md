@@ -9,7 +9,7 @@ import (
 	"log"
 	"time"
 
-  "github.com/JelmerDeHen/xidle"
+	"github.com/JelmerDeHen/xidle"
 )
 
 func main() {
