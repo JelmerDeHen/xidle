@@ -17,7 +17,7 @@ func main() {
 
 Example with manually defined callbacks and durations:
 
-```
+```sh
 package main
 
 import (
