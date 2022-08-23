@@ -23,6 +23,12 @@ type CmdJob struct {
 	etimeMax time.Duration
 
 	Dbg bool
+
+	// When the outfile contains dynamic values such as timestamp it needs to be regenerated between execs
+	// A parameter named "${OUTFILE}" will be replaced by the result of OutfileGenerator()
+	OutfileGenerator func() string
+
+	retries int
 }
 
 func (c *CmdJob) Spawn() {
@@ -39,6 +45,13 @@ func (c *CmdJob) Spawn() {
 		c.Kill()
 	}
 
+	for i, v := range c.arg {
+		fmt.Println(i, v)
+		if v == "${OUTFILE}" {
+			c.arg[i] = c.OutfileGenerator()
+		}
+	}
+
 	c.cmd = exec.Command(c.name, c.arg...)
 
 	c.cmd.Stdout = &c.stdcombined
@@ -50,7 +63,7 @@ func (c *CmdJob) Spawn() {
 	time.Sleep(time.Second * 1)
 
 	if !c.Running() {
-		err := fmt.Errorf("Could not start %s: errno=%d\n%s", c.name, c.cmd.ProcessState.ExitCode(), c.stdcombined.String())
+		err := fmt.Errorf("%s terminated in <1s: errno=%d\n%s", c.name, c.cmd.ProcessState.ExitCode(), c.stdcombined.String())
 		panic(err)
 	}
 
@@ -103,6 +116,7 @@ func NewCmdJob(name string, arg ...string) *CmdJob {
 		etimeMax: time.Hour,
 		// testing
 		//etimeMax: time.Second * 20,
+
 	}
 }
 
