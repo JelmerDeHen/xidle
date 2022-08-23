@@ -45,9 +45,13 @@ func (c *CmdJob) Spawn() {
 		c.Kill()
 	}
 
-	for i, v := range c.arg {
+	// Copy to prevent changing original args
+	args := make([]string, len(c.arg))
+	copy(args, c.arg)
+
+	for i, v := range args {
 		if v == "${OUTFILE}" {
-			c.arg[i] = c.OutfileGenerator()
+			args[i] = c.OutfileGenerator()
 		}
 	}
 
