@@ -55,7 +55,7 @@ func (c *CmdJob) Spawn() {
 		}
 	}
 
-	c.cmd = exec.Command(c.name, c.arg...)
+	c.cmd = exec.Command(c.name, args...)
 
 	c.cmd.Stdout = &c.stdcombined
 	c.cmd.Stderr = &c.stdcombined
@@ -71,6 +71,8 @@ func (c *CmdJob) Spawn() {
 	}
 
 	c.start = time.Now()
+
+  fmt.Println(c.stdcombined.String())
 }
 
 func (c *CmdJob) Poll() {
