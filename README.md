@@ -57,3 +57,9 @@ Default behavior:
 - When not idle during last minute spawn the application
 - When idle over 10 minutes kill the application
 
+# Examples
+
+- https://github.com/JelmerDeHen/pling
+- https://github.com/JelmerDeHen/monarch/blob/main/core/cmd/x11grab_commands.go
+- https://github.com/JelmerDeHen/monarch/blob/main/core/cmd/arecord_commands.go
+
