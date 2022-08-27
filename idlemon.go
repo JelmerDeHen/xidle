@@ -33,6 +33,12 @@ func (im *Idlemon) Run() {
 		return
 	}
 
+	// Prevents execution each poll
+	if im.IdleOverT < im.IdleLessT {
+		log.Printf("Set Idlemon.IdleOverT to duration greater than idlemon.idleLessT\n")
+		return
+	}
+
 	// Configure default poll time to 1 second when this is not configured
 	if im.PollT == 0 {
 		im.PollT = time.Second

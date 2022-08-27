@@ -3,8 +3,10 @@ package xidle
 import (
 	"bytes"
 	"log"
+	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/JelmerDeHen/scrnsaver"
@@ -18,6 +20,7 @@ type CmdJob struct {
 	CurrentArgs []string
 	Output      *bytes.Buffer
 
+	KillSignal os.Signal
 	// When the outfile contains dynamic values such as timestamp it needs to be regenerated between execs
 	// A parameter named "${OUTFILE}" will be replaced by the result of OutfileGenerator()
 	OutfileGenerator func() string
@@ -84,12 +87,17 @@ func (c *CmdJob) Run() {
 }
 
 // Idlemon.IdleOver callback
+// Some applications can be terminated gracefully by configuring KillSignal. ffmpeg for example listens to syscall.SIGINT
 func (c *CmdJob) Kill() {
 	if !c.Running() {
 		return
 	}
 	log.Printf("CmdJob.Kill(): %s %v\n", c.Name, strings.Join(c.CurrentArgs[:], " "))
-	c.Cmd.Process.Kill()
+
+	if c.KillSignal == nil {
+		c.KillSignal = syscall.SIGTERM
+	}
+	c.Cmd.Process.Signal(c.KillSignal)
 }
 
 func (c *CmdJob) Running() bool {
