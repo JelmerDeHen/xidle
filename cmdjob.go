@@ -47,10 +47,19 @@ func (c *CmdJob) replaceDynamicArgs(args []string) []string {
 		"${RESOLUTION}", resolution,
 	)
 
+	// Replace ${ENV[NAME]} with env var named NAME
+	var envReplacerArgs []string
+	for _, v := range os.Environ() {
+		before, after, _ := strings.Cut(v, "=")
+		envReplacerArgs = append(envReplacerArgs, "${ENV["+before+"]}", after)
+	}
+	envReplacer := strings.NewReplacer(envReplacerArgs...)
+
 	// Replace
 	newArgs := make([]string, len(args))
 	for i, arg := range args {
 		newArgs[i] = replacer.Replace(arg)
+		newArgs[i] = envReplacer.Replace(newArgs[i])
 	}
 
 	return newArgs
