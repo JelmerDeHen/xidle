@@ -1,3 +1,7 @@
+# xidle
+
+Run functions based on idle state in Xorg.
+
 # Usage
 
 Example with callbacks and durations:
@@ -50,7 +54,6 @@ func main() {
 ```
 
 Default behavior:
-- When application is running for over 1 hour, kill and respawn application (rotate outfile)
 - When not idle during last minute spawn the application
 - When idle over 10 minutes kill the application
 
