@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/JelmerDeHen/scrnsaver"
@@ -20,7 +19,9 @@ type CmdJob struct {
 	CurrentArgs []string
 	Output      *bytes.Buffer
 
+	// Set to os.Interrupt (SIGINT) or os.Kill (SIGKILL)
 	KillSignal os.Signal
+
 	// When the outfile contains dynamic values such as timestamp it needs to be regenerated between execs
 	// A parameter named "${OUTFILE}" will be replaced by the result of OutfileGenerator()
 	OutfileGenerator func() string
@@ -92,10 +93,12 @@ func (c *CmdJob) Kill() {
 	if !c.Running() {
 		return
 	}
+
 	log.Printf("CmdJob.Kill(): %s %v\n", c.Name, strings.Join(c.CurrentArgs[:], " "))
 
 	if c.KillSignal == nil {
-		c.KillSignal = syscall.SIGTERM
+		c.Cmd.Process.Kill()
+		return
 	}
 	c.Cmd.Process.Signal(c.KillSignal)
 }
