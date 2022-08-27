@@ -44,11 +44,6 @@ func (im *Idlemon) Run() {
 		im.PollT = time.Second
 	}
 
-	if im.IdleLess == nil || im.IdleOver == nil {
-		log.Println("Define callbacks")
-		return
-	}
-
 	for {
 		if !scrnsaver.HasXorg() {
 			log.Printf("Idlemon.Run(): User has no Xorg session\n")
