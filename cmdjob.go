@@ -11,15 +11,16 @@ import (
 )
 
 type CmdJob struct {
-	name string
-	arg  []string
-	cmd  *exec.Cmd
+	Name string
+	Args []string
+	Cmd  *exec.Cmd
+
+	CurrentArgs []string
+	Output      *bytes.Buffer
 
 	// When the outfile contains dynamic values such as timestamp it needs to be regenerated between execs
 	// A parameter named "${OUTFILE}" will be replaced by the result of OutfileGenerator()
 	OutfileGenerator func() string
-
-	retries int
 }
 
 // Update dynamic variables in args between runs
@@ -51,73 +52,76 @@ func (c *CmdJob) replaceDynamicArgs(args []string) []string {
 	return newArgs
 }
 
-func (c *CmdJob) Spawn() {
+// Idlemon.IdleLess callback
+func (c *CmdJob) Run() {
 	// Don't do anything if we are still running
 	if c.Running() {
 		return
 	}
 
 	// Replace variables in args
-	args := c.replaceDynamicArgs(c.arg)
+	c.CurrentArgs = c.replaceDynamicArgs(c.Args)
 
-	log.Printf("CmdJob.Spawn(): %s %v\n", c.name, strings.Join(args[:], " "))
+	log.Printf("CmdJob.Run(): %s %v\n", c.Name, strings.Join(c.CurrentArgs[:], " "))
 
-	c.cmd = exec.Command(c.name, args...)
+	c.Cmd = exec.Command(c.Name, c.CurrentArgs...)
 
-	var stdcombined bytes.Buffer
-	c.cmd.Stdout = &stdcombined
-	c.cmd.Stderr = &stdcombined
+	c.Output = new(bytes.Buffer)
+	c.Cmd.Stdout = c.Output
+	c.Cmd.Stderr = c.Output
 
-	go c.cmd.Run()
+	go c.Cmd.Run()
 
 	// Give time to fail
 	time.Sleep(time.Second * 1)
 
 	if !c.Running() {
-		if c.cmd.ProcessState != nil && c.cmd.ProcessState.ExitCode() != 0 {
-			log.Printf("CmdJob.Spawn(): Starting %s resulted in non-zero exit code after 1 second: errno=%d; output=%q\n", c.name, c.cmd.ProcessState.ExitCode(), stdcombined.String())
+		if c.Cmd.ProcessState != nil && c.Cmd.ProcessState.ExitCode() != 0 {
+			log.Printf("CmdJob.Run(): Starting %s resulted in non-zero exit code after 1 second: errno=%d; output=%q\n", c.Name, c.Cmd.ProcessState.ExitCode(), c.Output.String())
 			return
 		}
 	}
 }
 
+// Idlemon.IdleOver callback
 func (c *CmdJob) Kill() {
 	if !c.Running() {
 		return
 	}
-	log.Printf("CmdJob.Kill(): %s %v\n", c.name, c.arg)
-	c.cmd.Process.Kill()
+	log.Printf("CmdJob.Kill(): %s %v\n", c.Name, strings.Join(c.CurrentArgs[:], " "))
+	c.Cmd.Process.Kill()
 }
 
 func (c *CmdJob) Running() bool {
-	if c.cmd == nil {
+	if c.Cmd == nil {
 		return false
 	}
 
-	if c.cmd != nil && c.cmd.ProcessState != nil {
-		//if c.cmd != nil && c.cmd.ProcessState != nil && c.cmd.ProcessState.Exited() {
+	if c.Cmd != nil && c.Cmd.ProcessState != nil {
+		//if c.Cmd != nil && c.Cmd.ProcessState != nil && c.Cmd.ProcessState.Exited() {
 		return false
 	}
 
 	return true
 }
 
+// Deprecate?
 func NewCmdJob(name string, arg ...string) *CmdJob {
 	return &CmdJob{
-		name: name,
-		arg:  arg,
+		Name: name,
+		Args: arg,
 	}
 }
 
-func NewIdlemon(runner *CmdJob) *Idlemon {
+func NewIdlemon(c *CmdJob) *Idlemon {
 	// When user was present last minute then spawn the app
 	// When user was idle for over 10 mins kill the app
 	idlecmd := &Idlemon{
 		IdleLessT: time.Minute,
 		IdleOverT: time.Minute * 10,
 
-		IdleLess: runner.Spawn,
-		IdleOver: runner.Kill,
+		IdleLess: c.Run,
+		IdleOver: c.Kill,
 	}
 
 	return idlecmd
