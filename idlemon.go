@@ -24,34 +24,60 @@ type Idlemon struct {
 
 // Run defined callbacks based on how long user is idle
 func (im *Idlemon) Run() {
-	if im.Poll == nil || im.IdleLess == nil || im.IdleOver == nil {
+	if im.IdleLess != nil && im.IdleLessT == 0 {
+		log.Printf("Set Idlemon.IdleLessT to duration greater than 0\n")
+		return
+	}
+	if im.IdleOver != nil && im.IdleOverT == 0 {
+		log.Printf("Set Idlemon.IdleOverT to duration greater than 0\n")
+		return
+	}
+
+	// Configure default poll time to 1 second when this is not configured
+	if im.PollT == 0 {
+		im.PollT = time.Second
+	}
+
+	if im.IdleLess == nil || im.IdleOver == nil {
 		log.Println("Define callbacks")
 		return
 	}
 
 	for {
-		// Get idle time
+		if !scrnsaver.HasXorg() {
+			log.Printf("Idlemon.Run(): User has no Xorg session\n")
+			break
+		}
+
+		// If user has X session check if user is idle
 		info, err := scrnsaver.GetXScreenSaverInfo()
 		if err != nil {
-			panic(err)
+			log.Printf("scrnsaver.GetXScreenSaverInfo(): %s\n", err)
+			continue
 		}
 
-		im.Poll()
-
-		// When idle less than duration
-		if info.Idle < im.IdleLessT {
-			if im.Dbg {
-				log.Printf("User present: info.Idle=%vs < %v\n", info.Idle.Seconds(), im.IdleLessT.Seconds())
-			}
-			im.IdleLess()
+		if im.Poll != nil {
+			im.Poll()
 		}
 
-		// When idle over duration
-		if info.Idle > im.IdleOverT {
-			if im.Dbg {
-				log.Printf("User idle: info.Idle=%vs > %v\n", info.Idle.Seconds(), im.IdleOverT.Seconds())
+		if im.IdleLess != nil {
+			// When idle less than duration
+			if info.Idle < im.IdleLessT {
+				if im.Dbg {
+					log.Printf("User present: info.Idle=%vs < %v\n", info.Idle.Seconds(), im.IdleLessT.Seconds())
+				}
+				im.IdleLess()
 			}
-			im.IdleOver()
+		}
+
+		if im.IdleOver != nil {
+			// When idle over duration
+			if info.Idle > im.IdleOverT {
+				if im.Dbg {
+					log.Printf("User idle: info.Idle=%vs > %v\n", info.Idle.Seconds(), im.IdleOverT.Seconds())
+				}
+				im.IdleOver()
+			}
 		}
 
 		time.Sleep(im.PollT)

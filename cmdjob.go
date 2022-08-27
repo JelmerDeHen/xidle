@@ -2,27 +2,18 @@ package xidle
 
 import (
 	"bytes"
-	"fmt"
 	"log"
 	"os/exec"
+	"strings"
 	"time"
+
+	"github.com/JelmerDeHen/scrnsaver"
 )
 
-// Helper for managing apps with Idlemon
 type CmdJob struct {
 	name string
 	arg  []string
-
-	cmd         *exec.Cmd
-	stdcombined bytes.Buffer
-
-	// state
-	start time.Time
-	etime time.Duration
-
-	etimeMax time.Duration
-
-	Dbg bool
+	cmd  *exec.Cmd
 
 	// When the outfile contains dynamic values such as timestamp it needs to be regenerated between execs
 	// A parameter named "${OUTFILE}" will be replaced by the result of OutfileGenerator()
@@ -31,34 +22,51 @@ type CmdJob struct {
 	retries int
 }
 
+// Update dynamic variables in args between runs
+// ${OUTFILE} by output of c.OutfileGenerator()
+// ${RESOLUTION} by out screen resolution when Xorg is running or empty string
+func (c *CmdJob) replaceDynamicArgs(args []string) []string {
+	// Prepare replacements
+	var resolution string
+	if scrnsaver.HasXorg() {
+		resolution = scrnsaver.GetResolution()
+	}
+
+	var outfile string
+	if c.OutfileGenerator != nil {
+		outfile = c.OutfileGenerator()
+	}
+
+	replacer := strings.NewReplacer(
+		"${OUTFILE}", outfile,
+		"${RESOLUTION}", resolution,
+	)
+
+	// Replace
+	newArgs := make([]string, len(args))
+	for i, arg := range args {
+		newArgs[i] = replacer.Replace(arg)
+	}
+
+	return newArgs
+}
+
 func (c *CmdJob) Spawn() {
+	// Don't do anything if we are still running
 	if c.Running() {
 		return
 	}
 
-	// Kill before exec
-	if c.Running() {
-		c.Kill()
-	}
+	// Replace variables in args
+	args := c.replaceDynamicArgs(c.arg)
 
-	// Copy to prevent changing original args
-	args := make([]string, len(c.arg))
-	copy(args, c.arg)
-
-	for i, v := range args {
-		if v == "${OUTFILE}" {
-			args[i] = c.OutfileGenerator()
-		}
-	}
-
-	//if c.Dbg {
-	log.Printf("Spawn(): %s %v\n", c.name, args)
-	//}
+	log.Printf("CmdJob.Spawn(): %s %v\n", c.name, strings.Join(args[:], " "))
 
 	c.cmd = exec.Command(c.name, args...)
 
-	c.cmd.Stdout = &c.stdcombined
-	c.cmd.Stderr = &c.stdcombined
+	var stdcombined bytes.Buffer
+	c.cmd.Stdout = &stdcombined
+	c.cmd.Stderr = &stdcombined
 
 	go c.cmd.Run()
 
@@ -66,35 +74,18 @@ func (c *CmdJob) Spawn() {
 	time.Sleep(time.Second * 1)
 
 	if !c.Running() {
-		err := fmt.Errorf("%s terminated in <1s: errno=%d\n%s", c.name, c.cmd.ProcessState.ExitCode(), c.stdcombined.String())
-		panic(err)
-	}
-
-	c.start = time.Now()
-}
-
-func (c *CmdJob) Poll() {
-	// Elapsed time
-	c.etime = time.Since(c.start)
-
-	// Kill process to rotate outfile
-	if c.etime > c.etimeMax {
-		if c.Dbg {
-			log.Printf("Process elapsed time limit reached: c.etime=%vs > c.etimeMax%vs\n", c.etime.Seconds(), c.etimeMax.Seconds())
+		if c.cmd.ProcessState != nil && c.cmd.ProcessState.ExitCode() != 0 {
+			log.Printf("CmdJob.Spawn(): Starting %s resulted in non-zero exit code after 1 second: errno=%d; output=%q\n", c.name, c.cmd.ProcessState.ExitCode(), stdcombined.String())
+			return
 		}
-		c.Kill()
 	}
-
-	//fmt.Printf("%+v\n", c)
 }
 
 func (c *CmdJob) Kill() {
 	if !c.Running() {
 		return
 	}
-	//if c.Dbg {
-	log.Printf("Kill(): %s %v\n", c.name, c.arg)
-	//}
+	log.Printf("CmdJob.Kill(): %s %v\n", c.name, c.arg)
 	c.cmd.Process.Kill()
 }
 
@@ -113,30 +104,21 @@ func (c *CmdJob) Running() bool {
 
 func NewCmdJob(name string, arg ...string) *CmdJob {
 	return &CmdJob{
-		name:     name,
-		arg:      arg,
-		start:    time.Now(),
-		etimeMax: time.Hour,
-		// testing
-		//etimeMax: time.Second * 20,
-
+		name: name,
+		arg:  arg,
 	}
 }
 
 func NewIdlemon(runner *CmdJob) *Idlemon {
+	// When user was present last minute then spawn the app
+	// When user was idle for over 10 mins kill the app
 	idlecmd := &Idlemon{
-		PollT:     time.Second,
 		IdleLessT: time.Minute,
 		IdleOverT: time.Minute * 10,
 
-		Poll:     runner.Poll,
 		IdleLess: runner.Spawn,
 		IdleOver: runner.Kill,
 	}
-
-	// testing
-	//idlecmd.IdleLessT = time.Second * 1
-	//idlecmd.IdleOverT = time.Second * 3
 
 	return idlecmd
 }
