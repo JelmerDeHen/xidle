@@ -21,15 +21,15 @@ func main() {
 		Poll: func() {
 			log.Println("Polling")
 		},
-		PollT: time.Second,
+		PollInterval: time.Second,
 		IdleLess: func() {
 			log.Println("Present")
 		},
-		IdleLessT: time.Second * 3,
+		IdleLessTimeout: time.Second * 3,
 		IdleOver: func() {
 			log.Println("User afk")
 		},
-		IdleOverT: time.Second * 3,
+		IdleOverTimeout: time.Second * 3,
 	}
 	idlemon.Run()
 }

@@ -137,8 +137,8 @@ func NewIdlemon(c *CmdJob) *Idlemon {
 	// When user was present last minute then spawn the app
 	// When user was idle for over 10 mins kill the app
 	idlecmd := &Idlemon{
-		IdleLessT: time.Minute,
-		IdleOverT: time.Minute * 10,
+		IdleLessTimeout: time.Minute,
+		IdleOverTimeout: time.Minute * 10,
 
 		IdleLess: c.Run,
 		IdleOver: c.Kill,

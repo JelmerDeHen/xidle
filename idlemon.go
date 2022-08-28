@@ -8,52 +8,52 @@ import (
 )
 
 // Define callbacks:
-// Poll() is executed each poll; PollT defines time to sleep between polls
-// IdleLess() is executed when idle time < IdleLessT
-// IdleOver() is executed when idle time > IdleOverT
+// Poll() is executed each poll, PollInterval defines time to sleep between polls
+// IdleLess() is executed when idle time < IdleLessTimeout
+// IdleOver() is executed when idle time > IdleOverTimeout
 type Idlemon struct {
-	Poll      func()
-	PollT     time.Duration
-	IdleLess  func()
-	IdleLessT time.Duration
-	IdleOver  func()
-	IdleOverT time.Duration
+	Poll            func()
+	PollInterval    time.Duration
+	IdleLess        func()
+	IdleLessTimeout time.Duration
+	IdleOver        func()
+	IdleOverTimeout time.Duration
 
 	Dbg bool
 }
 
 // Run defined callbacks based on how long user is idle
 func (im *Idlemon) Run() {
-	if im.IdleLess != nil && im.IdleLessT == 0 {
-		log.Printf("Set Idlemon.IdleLessT to duration greater than 0\n")
+	if im.IdleLess != nil && im.IdleLessTimeout == 0 {
+		log.Println("Idlemon.Run(): Set Idlemon.IdleLessTimeout to duration greater than 0")
 		return
 	}
-	if im.IdleOver != nil && im.IdleOverT == 0 {
-		log.Printf("Set Idlemon.IdleOverT to duration greater than 0\n")
+	if im.IdleOver != nil && im.IdleOverTimeout == 0 {
+		log.Println("Idlemon.Run(): Set Idlemon.IdleOverTimeout to duration greater than 0")
 		return
 	}
 
 	// Prevents execution each poll
-	if im.IdleOverT < im.IdleLessT {
-		log.Printf("Set Idlemon.IdleOverT to duration greater than idlemon.idleLessT\n")
+	if im.IdleOverTimeout < im.IdleLessTimeout {
+		log.Println("Idlemon.Run(): Set Idlemon.IdleOverTimeout to duration greater than idlemon.idleLessTimeout")
 		return
 	}
 
 	// Configure default poll time to 1 second when this is not configured
-	if im.PollT == 0 {
-		im.PollT = time.Second
+	if im.PollInterval == 0 {
+		im.PollInterval = time.Second
 	}
 
 	for {
 		if !scrnsaver.HasXorg() {
-			log.Printf("Idlemon.Run(): User has no Xorg session\n")
+			log.Println("Idlemon.Run(): No Xorg session")
 			break
 		}
 
 		// If user has X session check if user is idle
 		info, err := scrnsaver.GetXScreenSaverInfo()
 		if err != nil {
-			log.Printf("scrnsaver.GetXScreenSaverInfo(): %s\n", err)
+			log.Printf("Idlemon.Run(): scrnsaver.GetXScreenSaverInfo(): %s\n", err)
 			continue
 		}
 
@@ -63,9 +63,9 @@ func (im *Idlemon) Run() {
 
 		if im.IdleLess != nil {
 			// When idle less than duration
-			if info.Idle < im.IdleLessT {
+			if info.Idle < im.IdleLessTimeout {
 				if im.Dbg {
-					log.Printf("User present: info.Idle=%vs < %v\n", info.Idle.Seconds(), im.IdleLessT.Seconds())
+					log.Printf("User present: info.Idle=%vs < %v\n", info.Idle.Seconds(), im.IdleLessTimeout.Seconds())
 				}
 				im.IdleLess()
 			}
@@ -73,14 +73,14 @@ func (im *Idlemon) Run() {
 
 		if im.IdleOver != nil {
 			// When idle over duration
-			if info.Idle > im.IdleOverT {
+			if info.Idle > im.IdleOverTimeout {
 				if im.Dbg {
-					log.Printf("User idle: info.Idle=%vs > %v\n", info.Idle.Seconds(), im.IdleOverT.Seconds())
+					log.Printf("User idle: info.Idle=%vs > %v\n", info.Idle.Seconds(), im.IdleOverTimeout.Seconds())
 				}
 				im.IdleOver()
 			}
 		}
 
-		time.Sleep(im.PollT)
+		time.Sleep(im.PollInterval)
 	}
 }
